@@ -20,6 +20,9 @@ Written By:
 #include <sys/msg.h>
 #include <sys/stat.h>
 
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include "shmSegment.h"
 
 bool FOREVER = true ;
@@ -65,7 +68,10 @@ void sigHandler_A( int sig )
         {
             perror("Error in execl of driver process");
         }
+    } else {
+        raise(SIGSTOP);
     }
+    
     
 }
 
@@ -78,6 +84,7 @@ void sigHandler_CONT( int sig )
     printf("\n\n### I (%d) have been asked to RESUME by Signal #%3d.\n\n"
            , getpid() , sig );  
     FOREVER = false;
+    
     
 }
 
@@ -92,8 +99,10 @@ int main(int argc , char * argv[])
     printf("\nHELLO! I AM THE COUNT PROCESS WITH ID= %d\n" , mypid );
       
     // Set up Signal Catching here
+
     sigactionWrapper(SIGCONT, sigHandler_CONT);
     sigactionWrapper(SIGTSTP, sigHandler_A);
+
     // sigactionWrapper(SIGSTOP, sigHandler_B);
     int msgflg  =  IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWOTH | S_IWGRP | S_IRGRP | S_IROTH; // add RGRP ROTH
     key_t shmKey = ftok("shmSegment.h", 1);
@@ -104,19 +113,25 @@ int main(int argc , char * argv[])
         // raise(SIGSTOP);
     }
 
+
     // int msgflags = S_IWUSR;
-    int shmMailbox = msgget(shmKey, msgflg);
-    if (shmMailbox == -1) {
-        printf("Error with msgget");
+    int msgflags = S_IWUSR;
+    int shmid = shmget(shmKey, SHMEM_SIZE, msgflags);
+    if (shmid == -1) {
+        printf("Error with shmget");
         perror("Reason");
         exit(EXIT_FAILURE);
         // raise(SIGSTOP);
     }
+
     
 
-    printf("HERE before .num1");
+
     shmStruct.num1 = atoi(argv[1]);
+
     shmStruct.num2 = atoi(argv[2]);
+    // printf("\n\nargv[1] is %d and argv[2] is %d\n\n", shmStruct.num1, shmStruct.num2);
+
 
     unsigned i=0;
     while(  FOREVER ) {

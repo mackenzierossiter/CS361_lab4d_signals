@@ -19,9 +19,13 @@ Written By:
 #include <sys/ipc.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sys/msg.h>
 #include <sys/stat.h>
 
+
+
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include "shmSegment.h"
 
 int main()
@@ -44,14 +48,22 @@ int main()
         raise(SIGSTOP);
     }
     int msgflags = S_IWUSR;
-    int shmMailbox = msgget(shmKey, msgflags);
+    int shmMailbox = shmget(shmKey, SHMEM_SIZE, msgflags);
     // int shmMailbox = msgget(shmKey, msgflg);
     if (shmMailbox == -1) {
-        printf("Error with msgget");
+        printf("Error with shmget");
         perror("Reason");
         raise(SIGSTOP);
     }
-    shmStruct.ratio = shmStruct.num1 / shmStruct.num2;
+    printf("line 58\n");
+    char * sharedMem = shmat(shmMailbox, NULL, 0);
+    if (sharedMem < 0) {
+        printf("shmat failed\n");
+        perror("Reason");
+        exit(EXIT_FAILURE);
+    }
+    printf("Divider: Dividing \t%d by \t%d", sharedMem.num1, shmStruct.num2);
+    sharedMem.ratio = sharedMem.num1 / sharedMem.num2;
 
     return 0;
 }
