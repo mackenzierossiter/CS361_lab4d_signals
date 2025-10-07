@@ -73,7 +73,7 @@ void sigHandler_A( int sig )
     } else {
         raise(SIGSTOP);
     }
-    
+
 }
 
 
@@ -140,13 +140,15 @@ int main(int argc , char * argv[])
 
     }
         
+
+    printf("%10X\r" , i++ ) ;
     printf("\nCOUNTER: Stopped Counting. The FOREVER flag must have become FALSE\n\n");
     
     printf("\nCOUNTER: Found this ratio in the Shared Memory: \t%.3f\n", p->ratio);
     
     shmdt(p);
     shmctl(shmid, IPC_RMID, NULL);
-
+    
     printf("\nCOUNTER: Goodbye\n\n");
 
     //kill (mypid, SIGSTOP);
