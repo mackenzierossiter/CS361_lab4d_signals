@@ -26,6 +26,8 @@ Written By:
 #include "shmSegment.h"
 
 bool FOREVER = true ;
+int shmid;
+shmData *p;
 
 //------------------------------------------------------------
 /* Wrapper for sigaction */
@@ -53,7 +55,7 @@ Sigfunc * sigactionWrapper( int signo, Sigfunc *func )
 void sigHandler_A( int sig ) 
 {
     fflush( stdout ) ;
-    printf("\n\n### I (%d) received Signal #%3d.\n\n"
+    printf("\n\n### I (%d) have been nicely asked to PAUSE. by Signal #%3d.\n\n"
            , getpid() , sig );  
     // raise(SIGSTOP);
     // printf("Here before fork()\n");
@@ -71,7 +73,6 @@ void sigHandler_A( int sig )
     } else {
         raise(SIGSTOP);
     }
-    
     
 }
 
@@ -92,11 +93,11 @@ void sigHandler_CONT( int sig )
 
 int main(int argc , char * argv[])
 {
-    shmData shmStruct;
+    key_t shmKey;
     pid_t  mypid ;
 
     mypid = getpid() ;
-    printf("\nHELLO! I AM THE COUNT PROCESS WITH ID= %d\n" , mypid );
+    printf("\nHELLO! I AM THE COUNTER PROCESS WITH ID= %d\n" , mypid );
       
     // Set up Signal Catching here
 
@@ -105,7 +106,7 @@ int main(int argc , char * argv[])
 
     // sigactionWrapper(SIGSTOP, sigHandler_B);
     int msgflg  =  IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWOTH | S_IWGRP | S_IRGRP | S_IROTH; // add RGRP ROTH
-    key_t shmKey = ftok("shmSegment.h", 1);
+    shmKey = ftok("shmSegment.h", 1);
     if (shmKey == -1) {
         printf("Error with ftok");
         perror("Reason");
@@ -115,8 +116,7 @@ int main(int argc , char * argv[])
 
 
     // int msgflags = S_IWUSR;
-    int msgflags = S_IWUSR;
-    int shmid = shmget(shmKey, SHMEM_SIZE, msgflags);
+    shmid = shmget(shmKey, SHMEM_SIZE, msgflg);
     if (shmid == -1) {
         printf("Error with shmget");
         perror("Reason");
@@ -124,24 +124,32 @@ int main(int argc , char * argv[])
         // raise(SIGSTOP);
     }
 
-    
+    p = (shmData *) shmat(shmid, NULL, 0);
 
 
-    shmStruct.num1 = atoi(argv[1]);
+    p->num1 = atoi(argv[1]);
 
-    shmStruct.num2 = atoi(argv[2]);
+    p->num2 = atoi(argv[2]);
     // printf("\n\nargv[1] is %d and argv[2] is %d\n\n", shmStruct.num1, shmStruct.num2);
 
 
     unsigned i=0;
     while(  FOREVER ) {
         printf("%10X\r" , i++ ) ;
-        printf("%f", shmStruct.ratio);
+        //printf("%f", p->ratio);
 
     }
         
     printf("\nCOUNTER: Stopped Counting. The FOREVER flag must have become FALSE\n\n");
+    
+    printf("\nCOUNTER: Found this ratio in the Shared Memory: \t%.3f\n", p->ratio);
+    
+    shmdt(p);
+    shmctl(shmid, IPC_RMID, NULL);
+
     printf("\nCOUNTER: Goodbye\n\n");
+
+    //kill (mypid, SIGSTOP);
     
 	return 0 ;
 

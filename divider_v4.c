@@ -30,15 +30,13 @@ Written By:
 
 int main()
 {
-    shmData shmStruct;
+    shmData *p;
     pid_t  mypid      = getpid() ;
 
-    printf("\n\nHELLO! I am the newly-born CHILD ID= %d\n" , mypid );
+    printf("\n\nHELLO! I am the newly-born DIVIDER with PID= %d\n" , mypid );
 
-
-    // Awaken my Parent
-    pid_t parentID = getpgid(mypid);
-    kill(SIGCONT, parentID);
+    pid_t parentID = getppid();
+    //kill(parentID, SIGCONT);
 
     int msgflg  =  S_IRUSR | S_IWUSR | S_IWOTH | S_IWGRP | S_IRGRP | S_IROTH; // add RGRP ROTH
     key_t shmKey = ftok("shmSegment.h", 1);
@@ -47,23 +45,28 @@ int main()
         perror("Reason");
         raise(SIGSTOP);
     }
-    int msgflags = S_IWUSR;
-    int shmMailbox = shmget(shmKey, SHMEM_SIZE, msgflags);
+
+    int shmMailbox = shmget(shmKey, SHMEM_SIZE, msgflg);
     // int shmMailbox = msgget(shmKey, msgflg);
     if (shmMailbox == -1) {
         printf("Error with shmget");
         perror("Reason");
         raise(SIGSTOP);
     }
-    printf("line 58\n");
-    char * sharedMem = shmat(shmMailbox, NULL, 0);
-    if (sharedMem < 0) {
+
+    p = shmat(shmMailbox, NULL, 0);
+    if (p < 0) {
         printf("shmat failed\n");
         perror("Reason");
         exit(EXIT_FAILURE);
     }
-    printf("Divider: Dividing \t%d by \t%d", sharedMem.num1, shmStruct.num2);
-    sharedMem.ratio = sharedMem.num1 / sharedMem.num2;
+    printf("\nDIVIDER: Dividing \t%d by \t%d\n", p->num1, p->num2);
+    p->ratio = (double) p->num1 / p->num2;
 
+    printf("\nDIVIDER: will signal my parent to CONTINUE\n");
+    //pid_t parentID = getppid();
+    kill(parentID, SIGCONT);
+
+    shmdt(p);
     return 0;
 }
